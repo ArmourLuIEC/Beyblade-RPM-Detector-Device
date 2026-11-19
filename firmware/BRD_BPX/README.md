@@ -12,7 +12,7 @@
 | READY 清歷史漏首發 | LOAD／AUTO 清除後可正常記錄第一發 MAX 與曲線。 |
 | BLE 更名競態 | 斷線後更新 GAP 名稱和 Scan Response，保留現有 BLE Server 與剛建立的連線。 |
 
-V1.5.1-1 的主機回歸及 ESP32-C3 編譯已通過，尚未實機驗證。此分支不包含新產生的 OTA 韌體，請依 [OTA 說明](OTA_V1.2_README.md)自行編譯；OTA 僅適用已安裝 1984 KiB 雙 OTA 分割表的裝置。
+V1.5.1-1 的主機回歸及 ESP32-C3 編譯已通過，尚未實機驗證。[OTA 韌體](../../update%20file/BRD_BPX/OTA/V1.5.1-1/BRD_BPX_OTA_V1.5.1-1.bin)為 app-only，僅適用已安裝 1984 KiB 雙 OTA 分割表的裝置；更新方法見 [OTA 說明](OTA_V1.2_README.md)。
 
 ## 舊版 V1.4.4 BLE 參數與名稱設定（2026-11-15）
 
