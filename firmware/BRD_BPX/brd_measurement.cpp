@@ -689,6 +689,14 @@ void brd_measurement_update(void) {
     update_modification_window();
 }
 
+bool brd_measurement_is_loaded_ready(void) {
+    if (!g_measurement_enabled || !measurement_uses_load()) {
+        return false;
+    }
+    const brd_display_t display = brd_measurement_get_display();
+    return display.loaded && !display.hold_active;
+}
+
 brd_display_t brd_measurement_get_display(void) {
     brd_display_t display;
     /* [修改] AUTO 的 BLE 裝載旗標直接跟隨即時 RPM；OLED 文字另由 AUTO READY 固定顯示。 */

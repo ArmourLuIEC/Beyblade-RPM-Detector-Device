@@ -26,6 +26,7 @@ static void pulse(uint32_t delta) {
 }
 int main() {
     brd_measurement_begin();
+    assert(!brd_measurement_is_loaded_ready());
     pulse(100U);
     // [修改] 單筆 Falling 週期立即換算；首次低於百分比直接結束。
     for (unsigned i = 0U; i < 5U; ++i) { pulse(5000U); }

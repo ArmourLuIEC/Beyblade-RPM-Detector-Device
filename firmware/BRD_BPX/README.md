@@ -12,7 +12,7 @@
 | READY 清歷史漏首發 | LOAD／AUTO 清除後可正常記錄第一發 MAX 與曲線。 |
 | BLE 更名競態 | 斷線後更新 GAP 名稱和 Scan Response，保留現有 BLE Server 與剛建立的連線。 |
 
-V1.5.1-1 尚未實機驗證。此分支不包含新產生的 OTA 韌體，請依 [OTA 說明](OTA_V1.2_README.md)自行編譯；OTA 僅適用已安裝 1984 KiB 雙 OTA 分割表的裝置。
+V1.5.1-1 的主機回歸及 ESP32-C3 編譯已通過，尚未實機驗證。此分支不包含新產生的 OTA 韌體，請依 [OTA 說明](OTA_V1.2_README.md)自行編譯；OTA 僅適用已安裝 1984 KiB 雙 OTA 分割表的裝置。
 
 ## 舊版 V1.4.4 BLE 參數與名稱設定（2026-11-15）
 
@@ -54,6 +54,10 @@ V1.5.1-1 尚未實機驗證。此分支不包含新產生的 OTA 韌體，請依
 | `tools/BRD_BPX_BLE_Config.html` | [修改] 初始選擇 300 mAh。[新增] 兩個容量選項。[刪減] JavaScript 重複維護的容量清單。 |
 
 ## 本次功能
+
+### LOADED READY 狀態燈
+
+LOAD 模式主畫面在已裝載就緒時，GPIO8 的 LED 持續亮起；即使轉速感測有脈衝，只要裝載狀態仍為 READY 就保持亮燈。充電時畫面顯示電量百分比，LED 仍依裝載狀態亮滅；未裝載、IR TEST、低電、ADC 故障及 OTA 時熄滅。LOAD 去彈跳仍為 50 ms，此功能不阻塞量測。
 
 ### 充電電量顯示
 

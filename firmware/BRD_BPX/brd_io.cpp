@@ -4,12 +4,34 @@
     檔案位置: BRD_BBP/brd_io.cpp
     [V0.10 修正] 充電 DET 使用內部上拉，其餘專案輸入腳不啟用內部上下拉。
     [V0.10 恢復] 充電 DET 讀取，提供 OLED 充電圖示狀態。
-    [V0.10 刪減] LED 跟隨功能；GPIO8 固定關燈。
+    [修改] GPIO8 在 LOADED READY 期間恆亮。
 */
 #include <driver/gpio.h>
+#include <esp_log.h>
 
 #include "brd_config.h"
 #include "brd_io.h"
+
+static bool g_status_led_lit = false;
+static bool g_status_led_state_known = false;
+static bool g_status_led_error_reported = false;
+
+static void set_status_led(bool lit) {
+    const esp_err_t error = gpio_set_level((gpio_num_t)STATUS_LED_GPIO,
+                                           lit ? LOW : STATUS_LED_INACTIVE_LEVEL);
+    if (error != ESP_OK) {
+        g_status_led_state_known = false;
+        if (!g_status_led_error_reported) {
+            ESP_LOGE("brd_io", "GPIO%d LED write failed: %d",
+                     STATUS_LED_GPIO, static_cast<int>(error));
+            g_status_led_error_reported = true;
+        }
+        return;
+    }
+    g_status_led_lit = lit;
+    g_status_led_state_known = true;
+    g_status_led_error_reported = false;
+}
 
 static void input_without_pull(uint8_t pin) {
     pinMode(pin, INPUT);
@@ -17,6 +39,9 @@ static void input_without_pull(uint8_t pin) {
 }
 
 void brd_io_begin(void) {
+    g_status_led_state_known = false;
+    g_status_led_error_reported = false;
+
     input_without_pull(RPM_IR_GPIO);
     input_without_pull(LOAD_IR_GPIO);
 
@@ -31,11 +56,17 @@ void brd_io_begin(void) {
     input_without_pull(I2C_SDA_GPIO);
     input_without_pull(I2C_SCL_GPIO);
 
-    /* [V0.10 修改] 先設定輸出鎖存電位，再切換為 OUTPUT，固定關閉 LED。 */
-    (void)gpio_set_level((gpio_num_t)STATUS_LED_GPIO, STATUS_LED_INACTIVE_LEVEL);
+    /* [V0.10 修改] 先設定輸出鎖存電位，再切換為 OUTPUT，初始化時關閉 LED。 */
+    set_status_led(false);
     pinMode(STATUS_LED_GPIO, OUTPUT);
     (void)gpio_set_pull_mode((gpio_num_t)STATUS_LED_GPIO, GPIO_FLOATING);
-    (void)gpio_set_level((gpio_num_t)STATUS_LED_GPIO, STATUS_LED_INACTIVE_LEVEL);
+    set_status_led(false);
+}
+
+void brd_io_update_loaded_ready_led(bool loaded_ready) {
+    if (!g_status_led_state_known || loaded_ready != g_status_led_lit) {
+        set_status_led(loaded_ready);
+    }
 }
 
 bool brd_io_is_charging(void) {

@@ -4,6 +4,7 @@
 #define BRD_IO_H
 
 void brd_io_begin(void);
+void brd_io_update_loaded_ready_led(bool loaded_ready);
 /* [V0.10 恢復] GPIO10 LOW 表示充電中，供 OLED 充電圖示使用。 */
 bool brd_io_is_charging(void);
 /* [新增] 僅讀取，不改寫兩組 IR 腳位設定與中斷控制。 */

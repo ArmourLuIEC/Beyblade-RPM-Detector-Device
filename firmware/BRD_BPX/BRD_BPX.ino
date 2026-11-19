@@ -46,6 +46,7 @@ void loop(void) {
     brd_battery_update();
     if (!brd_battery_measurement_allowed()) {
         brd_measurement_stop();
+        brd_io_update_loaded_ready_led(false);
         brd_bbp_stop();
         /* [修正] SOC 恢復穩定後先保存 dirty 紀錄，成功才重啟，避免清除被撤回。 */
         if (brd_battery_restart_required() && brd_bbp_prepare_restart()) {
@@ -64,9 +65,15 @@ void loop(void) {
         [修改] RPM 量測為最高優先：進行中完全略過主 loop 的 OTA/BBP Notify/設定傳輸/NVS。
         不強制 BLE 斷線，僅延後應用層傳輸；電池保護與 OLED 仍維持運作。
     */
-    if (!brd_measurement_capture_active()) {
+    const bool capture_active = brd_measurement_capture_active();
+    if (!capture_active) {
         brd_ota_update();
-        const bool ota_busy = brd_ota_is_busy();
+    }
+    const bool ota_busy = brd_ota_is_busy();
+    const bool ir_test_page = brd_settings_ble_display_page() == BRD_DISPLAY_PAGE_IR_TEST;
+    brd_io_update_loaded_ready_led(!ota_busy && !ir_test_page &&
+                                   brd_measurement_is_loaded_ready());
+    if (!capture_active) {
         const bool storage_allowed = !ota_busy && brd_measurement_storage_allowed();
         if (!ota_busy && !brd_settings_bluetooth_allowed(brd_io_is_charging())) {
             brd_bbp_stop();
