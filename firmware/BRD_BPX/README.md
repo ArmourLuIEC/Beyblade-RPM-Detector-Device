@@ -1,9 +1,9 @@
-# BRD BPX V1.4.4
+# BRD BPX V1.5.1-1
 
 本版在 V1.4.5 的 ESP32-C3 與 128×32 SSD1306 OLED 專案加入 500 mAh、1000 mAh 充電百分比估算檔位。解壓後使用 Arduino IDE 開啟 `BRD_BPX/BRD_BPX.ino`。
 
 本次 GPIO3 FALLING 原始 RPM 量測改造詳見 [RPM_FALLING_RAW_CHANGELOG.md](RPM_FALLING_RAW_CHANGELOG.md)。
-版本字串延續原專案，未主動更換韌體版本號。
+本客製版基於 V1.5.1，韌體版本為 V1.5.1-1。
 
 | 修正 | 行為 |
 |---|---|
@@ -12,7 +12,7 @@
 | READY 清歷史漏首發 | LOAD／AUTO 清除後可正常記錄第一發 MAX 與曲線。 |
 | BLE 更名競態 | 斷線後更新 GAP 名稱和 Scan Response，保留現有 BLE Server 與剛建立的連線。 |
 
-主機回歸已通過。請在 Arduino IDE 編譯 ESP32-C3 目標以產生可燒錄 BIN。
+V1.5.1-1 尚未實機驗證。此分支不包含新產生的 OTA 韌體，請依 [OTA 說明](OTA_V1.2_README.md)自行編譯；OTA 僅適用已安裝 1984 KiB 雙 OTA 分割表的裝置。
 
 ## 舊版 V1.4.4 BLE 參數與名稱設定（2026-11-15）
 
@@ -55,6 +55,10 @@
 
 ## 本次功能
 
+### 充電電量顯示
+
+充電時主畫面第一行以電量百分比取代 `WAIT LOAD`、`LOADED READY`、`AUTO READY` 或 `HOLD`；第二行仍顯示 RPM／MAX，拔除充電後恢復狀態文字。百分比是依電池電壓估算的數值。OTA、低電與 ADC 錯誤提示仍優先顯示；IR TEST 畫面維持不變。
+
 ### 充電關閉 BLE 兩行小字
 
 [修改] 充電關閉 BLE 設定啟用且 BLE 已停止時，OLED 右下角以小字分兩行顯示 `BLE`、`OFF`，右上角充電閃電保留。一般連線沿用原圖示；單純未連線時留白。修改位置、顯示規則及預覽見 [CHARGING_BLE_ICON_NOTE.md](CHARGING_BLE_ICON_NOTE.md)。
@@ -74,7 +78,7 @@ LOAD 的確認值須小於或等於 MAX 乘上結束百分比，AUTO 則須嚴�
 
 充電開關預設停用（`BLE_OFF_WHILE_CHARGING=0U`），充電時保留 BLE。已有有效 Flash 設定時仍載入原設定；若之前保存為啟用，需透過設定 API 將參數 `04` 設為 `0` 後 SAVE，才會改為充電時保留 BLE。也可 DEFAULTS 後 SAVE，但會同步重設全部五項參數。
 
-充電開關啟用時只停用 BLE，量測與本機歷史保留；拔除充電後恢復。開機上方顯示 `BRD BPX`，下方版本 `FW VER V1.4.4` 取自 `brd_config.h` 的 `PROJECT_FIRMWARE_VERSION`。下圖為舊版 framebuffer 的版面參考。
+充電開關啟用時只停用 BLE，量測與本機歷史保留；拔除充電後恢復。開機上方顯示 `BRD BPX`，下方版本 `FW VER V1.5.1-1` 取自 `brd_config.h` 的 `PROJECT_FIRMWARE_VERSION`。下圖為舊版 framebuffer 的版面參考。
 
 ![OLED 開機畫面](docs/OLED_boot_preview.png)
 

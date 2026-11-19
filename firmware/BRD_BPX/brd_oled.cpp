@@ -208,6 +208,7 @@ static const uint8_t *oled_get_glyph(char c) {
     static const uint8_t glyph_Y[5] = {0x07, 0x08, 0x70, 0x08, 0x07};
     /* [保留] PROJECT_VERSION 小數點。 */
     static const uint8_t glyph_dot[5] = {0x00, 0x60, 0x60, 0x00, 0x00};
+    static const uint8_t glyph_hyphen[5] = {0x08, 0x08, 0x08, 0x08, 0x08};
     /* [V1.2 新增] OTA 進度百分比字型，取代原有 PCT 單位。 */
     static const uint8_t glyph_percent[5] = {0x63, 0x13, 0x08, 0x64, 0x63};
     /* [BRD_BBP 新增] 版本名稱使用的底線字元。 */
@@ -248,6 +249,7 @@ static const uint8_t *oled_get_glyph(char c) {
         case 'X': return glyph_X;
         case 'Y': return glyph_Y;
         case '.': return glyph_dot;
+        case '-': return glyph_hyphen;
         case '%': return glyph_percent;
         case '_': return glyph_underscore;
         case ' ':
@@ -836,6 +838,10 @@ static void oled_begin_frame(const brd_display_t &display, uint8_t battery_perce
         (display.hold_active ? "HOLD" :
         (brd_settings_get().mode == BRD_MEASUREMENT_MODE_AUTO ? "AUTO READY" :
          (display.loaded ? "LOADED READY" : "WAIT LOAD")));
+    if (charging && !g_frame_ota.active) {
+        snprintf(value_line, sizeof(value_line), "%u%%", static_cast<unsigned>(battery_percent));
+        status_line = value_line;
+    }
     oled_draw_text(0U, 0U, status_line, 1U);
     if (g_frame_ota.active) {
         /* [V1.2 刪減] 原本 "0~100 PCT" 字串與左對齊的第二行數值顯示。 */

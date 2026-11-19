@@ -22,15 +22,75 @@ bool brd_io_read_ir2() { return false; }
 bool brd_bbp_is_started() { return false; }
 bool brd_bbp_is_connected() { return false; }
 bool brd_io_is_charging() { return false; }
+static brd_settings::Values test_settings = {0U,1U,30U,2000U,BATTERY_CAPACITY_200_MAH, OLED_MAX_HOLD_MS};
 const brd_settings::Values &brd_settings_get() {
-    static const brd_settings::Values value={0U,1U,30U,2000U,BATTERY_CAPACITY_200_MAH, OLED_MAX_HOLD_MS}; return value;
+    return test_settings;
 }
 #include "../brd_oled.cpp"
 brd_display_t brd_measurement_get_display() { return {}; }
 void brd_measurement_max_frame_presented(uint32_t) {}
+
+static void check_status_line(const brd_display_t &display, uint8_t percent, bool charging,
+                              const char *expected) {
+    oled_begin_frame(display, percent, charging);
+    uint8_t actual[100];
+    memcpy(actual, g_oled_buffer, sizeof(actual));
+    oled_clear_buffer();
+    oled_draw_text(0U, 0U, expected, 1U);
+    assert(memcmp(actual, g_oled_buffer, sizeof(actual)) == 0);
+}
+
+static void test_charging_status() {
+    brd_display_t display = {};
+    display.value = 1234U;
+    check_status_line(display, 0U, false, "WAIT LOAD");
+    check_status_line(display, 0U, true, "0%");
+    display.loaded = true;
+    check_status_line(display, 75U, false, "LOADED READY");
+    check_status_line(display, 75U, true, "75%");
+    display.hold_active = true;
+    display.show_max = true;
+    check_status_line(display, 100U, false, "HOLD");
+    check_status_line(display, 100U, true, "100%");
+    test_settings.mode = BRD_MEASUREMENT_MODE_AUTO;
+    display.hold_active = false;
+    check_status_line(display, 75U, false, "AUTO READY");
+    check_status_line(display, 75U, true, "75%");
+
+    oled_begin_frame(display, 75U, false);
+    uint8_t rpm_line[2][111];
+    for (unsigned page = 0U; page < 2U; page++) {
+        memcpy(rpm_line[page], g_oled_buffer + OLED_WIDTH * (2U + page), sizeof(rpm_line[page]));
+    }
+    oled_begin_frame(display, 75U, true);
+    for (unsigned page = 0U; page < 2U; page++) {
+        assert(memcmp(rpm_line[page], g_oled_buffer + OLED_WIDTH * (2U + page),
+                      sizeof(rpm_line[page])) == 0);
+    }
+
+    test_ota_display = {true, false, brd_ota::RECEIVING, 50U};
+    check_status_line(display, 75U, true, "OTA UPDATE");
+    test_ota_display.verifying = true;
+    check_status_line(display, 75U, true, "VERIFY");
+    test_ota_display = {true, false, brd_ota::COMPLETE, 100U};
+    check_status_line(display, 75U, true, "OTA DONE");
+    test_ota_display = {};
+    g_frame_ota = {};
+    test_settings.mode = BRD_MEASUREMENT_MODE_LOAD;
+}
+
 int main(int argc,char **argv) {
     if(argc!=2 && argc!=3) { return 1; }
+    test_charging_status();
     brd_oled_begin();
+    assert(strcmp(PROJECT_BOOT_VERSION, "FW VER V1.5.1-1") == 0);
+    const unsigned boot_width = strlen(PROJECT_BOOT_VERSION) * 6U - 1U;
+    assert(boot_width <= OLED_WIDTH);
+    const unsigned hyphen_x = (OLED_WIDTH - boot_width) / 2U + 13U * 6U;
+    for (unsigned x = hyphen_x; x < hyphen_x + 5U; x++) {
+        assert((g_oled_buffer[3U * OLED_WIDTH + x] & (1U << 2U)) != 0U);
+    }
+    assert((g_oled_buffer[2U * OLED_WIDTH + hyphen_x + 8U] & (1U << 7U)) != 0U);
     /* [V1.2 新增] 驗證扇形圓盤 0%、25%、50%、75%、100% 填充像素必須遞增。 */
     unsigned previous_pixels = 0U;
     for (unsigned percent = 0U; percent <= 100U; percent += 25U) {
