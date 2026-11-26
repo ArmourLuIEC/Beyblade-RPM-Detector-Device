@@ -27,6 +27,7 @@ CASES = {
     "ble": ["tests/test_ble.cpp", "brd_settings_ble.cpp", "brd_settings_model.cpp", "brd_ble_identity.cpp"],
     "auto": ["tests/test_auto_baseline.cpp", "brd_measurement.cpp"],
     "boot": ["tests/render_boot.cpp"],
+    "ready_led_loop": ["tests/test_ready_led_loop.cpp", "brd_settings_model.cpp"],
     "ota_protocol": ["tests/test_ota_protocol.cpp", "brd_ota_protocol.cpp"],
     "ota_runtime": ["tests/test_ota_runtime.cpp", "brd_ota.cpp", "brd_ota_protocol.cpp", "brd_settings_model.cpp"],
     # [V1.2.1 新增] V1.2 修正後的 BLE 斷線回歸測試；電池 stub 另行編譯。

@@ -25,8 +25,8 @@
 
 #define PROJECT_FULL_NAME                 "Beyblade RPM Detector BattlePassX"
 #define PROJECT_SHORT_NAME                "BRD"
-/* [V1.5.1 修改] BLE 版本查詢與 OLED 開機版本共用 V1.5.1；不更動 RPM 量測。 */
-#define PROJECT_FIRMWARE_VERSION          "V1.5.2"
+/* BLE 版本查詢與 OLED 開機畫面共用此版本。 */
+#define PROJECT_FIRMWARE_VERSION          "V1.5.2-1"
 #define PROJECT_VERSION                   "BPX " PROJECT_FIRMWARE_VERSION
 #define PROJECT_BOOT_NAME                 "BRD BPX"
 #define PROJECT_BOOT_VERSION              "FW VER " PROJECT_FIRMWARE_VERSION

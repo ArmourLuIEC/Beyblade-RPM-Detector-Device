@@ -3,7 +3,14 @@
 #ifndef BRD_IO_H
 #define BRD_IO_H
 
+enum brd_status_led_mode_t {
+    BRD_STATUS_LED_OFF,
+    BRD_STATUS_LED_READY,
+    BRD_STATUS_LED_HOLD
+};
+
 void brd_io_begin(void);
+void brd_io_update_status_led(brd_status_led_mode_t mode);
 /* [V0.10 恢復] GPIO10 LOW 表示充電中，供 OLED 充電圖示使用。 */
 bool brd_io_is_charging(void);
 /* [新增] 僅讀取，不改寫兩組 IR 腳位設定與中斷控制。 */

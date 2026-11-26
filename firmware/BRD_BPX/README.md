@@ -1,9 +1,10 @@
-# BRD BPX V1.4.4
+# BRD BPX V1.5.2-1
 
-本版在 V1.4.5 的 ESP32-C3 與 128×32 SSD1306 OLED 專案加入 500 mAh、1000 mAh 充電百分比估算檔位。解壓後使用 Arduino IDE 開啟 `BRD_BPX/BRD_BPX.ino`。
+本版基於 V1.5.2，恢復主畫面電池百分比、新增 LOADED READY LED 恆亮及 HOLD 閃爍，並同步更新 OLED 與 BLE 版本字串。使用 Arduino IDE 開啟 `BRD_BPX/BRD_BPX.ino`。
+
+[V1.5.2-1 OTA 韌體](<../../update file/BRD_BPX/OTA/V1.5.2-1/BRD_BPX_OTA_V1.5.2-1.bin>)僅適用已安裝 1984 KiB 雙 OTA 分割表的裝置。
 
 本次 GPIO3 FALLING 原始 RPM 量測改造詳見 [RPM_FALLING_RAW_CHANGELOG.md](RPM_FALLING_RAW_CHANGELOG.md)。
-版本字串延續原專案，未主動更換韌體版本號。
 
 | 修正 | 行為 |
 |---|---|
@@ -12,7 +13,7 @@
 | READY 清歷史漏首發 | LOAD／AUTO 清除後可正常記錄第一發 MAX 與曲線。 |
 | BLE 更名競態 | 斷線後更新 GAP 名稱和 Scan Response，保留現有 BLE Server 與剛建立的連線。 |
 
-主機回歸已通過。請在 Arduino IDE 編譯 ESP32-C3 目標以產生可燒錄 BIN。
+主機回歸及 ESP32-C3 編譯已通過，尚未實機驗證。
 
 ## 舊版 V1.4.4 BLE 參數與名稱設定（2026-11-15）
 
@@ -54,6 +55,14 @@
 | `tools/BRD_BPX_BLE_Config.html` | [修改] 初始選擇 300 mAh。[新增] 兩個容量選項。[刪減] JavaScript 重複維護的容量清單。 |
 
 ## 本次功能
+
+### 電池電量百分比
+
+一般主畫面及 OTA 頂欄右側顯示估算電池百分比與電池圖示，充電時另顯示閃電。IR TEST 保留電壓顯示，低電及 ADC 故障仍優先顯示警告。
+
+### LOADED READY 與 HOLD 狀態燈
+
+LOAD 模式裝載就緒時，GPIO8 的 LED 恆亮；轉速取樣時只要仍顯示 LOADED READY 就保持亮燈。LOAD／AUTO 進入 HOLD 時，LED 亮 0.25 秒、滅 0.25 秒，直到 HOLD 結束；充電時也可使用。未裝載、AUTO READY、IR TEST、OTA、低電或 ADC 故障時熄滅。LOAD 去彈跳仍為 50 ms。
 
 ### 充電關閉 BLE 兩行小字
 

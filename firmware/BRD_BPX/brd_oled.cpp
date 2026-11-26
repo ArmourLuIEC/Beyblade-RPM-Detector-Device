@@ -213,6 +213,7 @@ static const uint8_t *oled_get_glyph(char c) {
     static const uint8_t glyph_Y[5] = {0x07, 0x08, 0x70, 0x08, 0x07};
     /* [保留] PROJECT_VERSION 小數點。 */
     static const uint8_t glyph_dot[5] = {0x00, 0x60, 0x60, 0x00, 0x00};
+    static const uint8_t glyph_hyphen[5] = {0x08, 0x08, 0x08, 0x08, 0x08};
     /* [V1.2 新增] OTA 進度百分比字型，取代原有 PCT 單位。 */
     static const uint8_t glyph_percent[5] = {0x63, 0x13, 0x08, 0x64, 0x63};
     /* [BRD_BBP 新增] 版本名稱使用的底線字元。 */
@@ -253,6 +254,7 @@ static const uint8_t *oled_get_glyph(char c) {
         case 'X': return glyph_X;
         case 'Y': return glyph_Y;
         case '.': return glyph_dot;
+        case '-': return glyph_hyphen;
         case '%': return glyph_percent;
         case '_': return glyph_underscore;
         case ' ':
@@ -862,10 +864,14 @@ static void oled_begin_frame(const brd_display_t &display, uint8_t battery_perce
     } else if (g_frame_ble_connected) {
         oled_draw_bluetooth_icon();
     }
-    /* [V1.5.2 FINAL 修改] 移除主頁電量百分比文字及動態座標。
-       [保留] 電池填充比例與充電閃電；電池固定靠右，占 20px。 */
-    const uint8_t battery_x = static_cast<uint8_t>(OLED_WIDTH - 20U);
-    oled_draw_battery_icon(battery_x, 0U, battery_percent);
+    char percent_text[5];
+    const uint8_t shown_percent = battery_percent > 100U ? 100U : battery_percent;
+    snprintf(percent_text, sizeof(percent_text), "%u%%", static_cast<unsigned>(shown_percent));
+    const uint8_t text_width = static_cast<uint8_t>(strlen(percent_text) * 6U - 1U);
+    const uint8_t text_x = static_cast<uint8_t>(OLED_WIDTH - text_width);
+    const uint8_t battery_x = static_cast<uint8_t>(text_x - 2U - 20U);
+    oled_draw_battery_icon(battery_x, 0U, shown_percent);
+    oled_draw_right_aligned_text(static_cast<uint8_t>(OLED_WIDTH - 1U), 1U, percent_text, 1U);
     if (charging) {
         oled_draw_charging_icon(static_cast<uint8_t>(battery_x - 7U), 1U);
     }

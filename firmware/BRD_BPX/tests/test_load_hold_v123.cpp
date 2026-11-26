@@ -7,8 +7,10 @@
 #include <cassert>
 #include <cstdio>
 #include <Arduino.h>
+#include <driver/gpio.h>
 #include <soc/gpio_struct.h>
 #include "brd_config.h"
+#include "brd_io.h"
 #include "brd_measurement.h"
 #include "brd_settings.h"
 #include "brd_bbp_session.h"
@@ -18,6 +20,21 @@ void (*test_interrupts[32])(void) = {};
 TestGPIO GPIO = {};
 static brd_bbp::Session session;
 static unsigned finish_calls = 0U;
+static int led_level = HIGH;
+static unsigned led_write_attempts = 0U;
+static bool led_write_fails = false;
+
+static esp_err_t test_gpio_set_level(gpio_num_t pin, uint32_t level) {
+    assert(pin == STATUS_LED_GPIO);
+    ++led_write_attempts;
+    if (led_write_fails) { return 1; }
+    led_level = static_cast<int>(level);
+    return ESP_OK;
+}
+
+#define gpio_set_level test_gpio_set_level
+#include "../brd_io.cpp"
+#undef gpio_set_level
 
 const brd_settings::Values &brd_settings_get() {
     static const brd_settings::Values value = {BRD_MEASUREMENT_MODE_LOAD, 0U, 30U, 2000U, BATTERY_CAPACITY_200_MAH, OLED_MAX_HOLD_MS};
@@ -36,28 +53,113 @@ void brd_bbp_capture_finish() {
 }
 void brd_bbp_capture_abort() { session.abort(); }
 
+static void test_ready_led_output() {
+    brd_io_begin();
+    assert(led_level == HIGH);
+    brd_io_update_status_led(BRD_STATUS_LED_READY);
+    assert(led_level == LOW);
+    const unsigned steady_writes = led_write_attempts;
+    const uint64_t elapsed_ms_values[] = {500ULL, 5000ULL, 60000ULL, (1ULL << 32U)};
+    for (uint64_t elapsed_ms : elapsed_ms_values) {
+        test_clock_us = elapsed_ms * 1000ULL;
+        brd_io_update_status_led(BRD_STATUS_LED_READY);
+        assert(led_level == LOW);
+        assert(led_write_attempts == steady_writes);
+    }
+
+    led_write_fails = true;
+    brd_io_update_status_led(BRD_STATUS_LED_OFF);
+    assert(led_level == LOW);
+    brd_io_update_status_led(BRD_STATUS_LED_OFF);
+    assert(led_write_attempts == steady_writes + 2U);
+    led_write_fails = false;
+    brd_io_update_status_led(BRD_STATUS_LED_OFF);
+    assert(led_level == HIGH);
+    led_write_fails = true;
+    brd_io_update_status_led(BRD_STATUS_LED_READY);
+    assert(led_level == HIGH);
+    led_write_fails = false;
+    brd_io_update_status_led(BRD_STATUS_LED_READY);
+    assert(led_level == LOW);
+
+    test_clock_us = 10000000ULL;
+    brd_io_update_status_led(BRD_STATUS_LED_HOLD);
+    assert(led_level == LOW);
+    const unsigned hold_start_writes = led_write_attempts;
+    test_clock_us += 249000ULL;
+    brd_io_update_status_led(BRD_STATUS_LED_HOLD);
+    assert(led_level == LOW && led_write_attempts == hold_start_writes);
+    test_clock_us += 1000ULL;
+    brd_io_update_status_led(BRD_STATUS_LED_HOLD);
+    assert(led_level == HIGH);
+    test_clock_us += 249000ULL;
+    brd_io_update_status_led(BRD_STATUS_LED_HOLD);
+    assert(led_level == HIGH);
+    test_clock_us += 1000ULL;
+    brd_io_update_status_led(BRD_STATUS_LED_HOLD);
+    assert(led_level == LOW);
+    test_clock_us += 1000000ULL;
+    brd_io_update_status_led(BRD_STATUS_LED_HOLD);
+    assert(led_level == LOW);
+    test_clock_us += 250000ULL;
+    brd_io_update_status_led(BRD_STATUS_LED_HOLD);
+    assert(led_level == HIGH);
+    brd_io_update_status_led(BRD_STATUS_LED_OFF);
+    assert(led_level == HIGH);
+
+    test_clock_us = ((1ULL << 32U) - 250ULL) * 1000ULL;
+    brd_io_update_status_led(BRD_STATUS_LED_HOLD);
+    assert(led_level == LOW);
+    test_clock_us += 250000ULL;
+    brd_io_update_status_led(BRD_STATUS_LED_HOLD);
+    assert(led_level == HIGH);
+    test_clock_us += 250000ULL;
+    brd_io_update_status_led(BRD_STATUS_LED_HOLD);
+    assert(led_level == LOW);
+    brd_io_update_status_led(BRD_STATUS_LED_READY);
+    assert(led_level == LOW);
+    brd_io_update_status_led(BRD_STATUS_LED_OFF);
+    assert(led_level == HIGH);
+
+    test_clock_us = 100000ULL;
+    brd_io_begin();
+}
+
+static void update_measurement() {
+    brd_measurement_update();
+    const brd_display_t display = brd_measurement_get_display();
+    const brd_status_led_mode_t mode = display.hold_active ? BRD_STATUS_LED_HOLD :
+        (brd_measurement_is_loaded_ready() ? BRD_STATUS_LED_READY : BRD_STATUS_LED_OFF);
+    brd_io_update_status_led(mode);
+}
+
 static void tick(uint32_t us) {
     test_clock_us += us;
-    brd_measurement_update();
+    update_measurement();
 }
 static void load(int level, uint32_t us) {
     test_clock_us += us;
     GPIO.in.val = (GPIO.in.val & ~(1U << LOAD_IR_GPIO)) |
                   (static_cast<uint32_t>(level) << LOAD_IR_GPIO);
     if (test_interrupts[LOAD_IR_GPIO]) { test_interrupts[LOAD_IR_GPIO](); }
-    brd_measurement_update();
+    update_measurement();
 }
 static void rpm(uint32_t us) {
     test_clock_us += us;
     GPIO.in.val |= 1U << RPM_IR_GPIO;
     if (test_interrupts[RPM_IR_GPIO]) { test_interrupts[RPM_IR_GPIO](); }
-    brd_measurement_update();
+    update_measurement();
 }
 static void shot_10000_then_3000() {
     const uint32_t previous_total = session.state().total;
     rpm(100U);
+    assert(brd_measurement_get_display().loaded);
+    assert(brd_measurement_is_loaded_ready());
+    assert(led_level == LOW);
     // [V1.4.5 修改] 連續有效週期建立 10000 RPM，避免測試依賴單筆峰值。
     for (unsigned i = 0U; i < 5U; ++i) { rpm(6000U); }
+    assert(brd_measurement_is_loaded_ready());
+    assert(led_level == LOW);
     assert(!brd_measurement_get_display().show_max);
     assert(!session.pending());
     assert(session.state().total == previous_total);
@@ -69,10 +171,14 @@ static void shot_10000_then_3000() {
     assert(brd_measurement_get_display().show_max);
     assert(brd_measurement_get_display().value == 10000U);
     assert(brd_measurement_get_display().hold_active);
+    assert(!brd_measurement_is_loaded_ready());
+    assert(led_level == LOW);
 }
 int main() {
     static_assert(LOAD_MAX_HOLD_MS == 2500UL, "LOAD HOLD must match original V1.2 2.5 seconds");
+    test_ready_led_output();
     brd_measurement_begin();
+    assert(!brd_measurement_is_loaded_ready());
     assert(!brd_measurement_get_display().loaded);
     assert(!brd_measurement_get_display().show_max);
     rpm(100U); rpm(6000U); // WAIT LOAD ignores RPM
@@ -80,8 +186,28 @@ int main() {
     load(HIGH, 1000U);
     tick(LOAD_IR_DEBOUNCE_US-1U);
     assert(!brd_measurement_get_display().loaded);
+    assert(!brd_measurement_is_loaded_ready());
+    assert(led_level == HIGH);
     tick(1U);
     assert(brd_measurement_get_display().loaded);
+    assert(brd_measurement_is_loaded_ready());
+    assert(led_level == LOW);
+    load(LOW, 100U);
+    tick(LOAD_IR_DEBOUNCE_US);
+    assert(!brd_measurement_is_loaded_ready());
+    assert(led_level == HIGH);
+    load(HIGH, 100U);
+    tick(LOAD_IR_DEBOUNCE_US);
+    assert(brd_measurement_is_loaded_ready());
+    assert(led_level == LOW);
+    rpm(100U);
+    tick(1000000U);
+    assert(brd_measurement_get_display().loaded);
+    assert(brd_measurement_is_loaded_ready());
+    assert(led_level == LOW);
+    tick((PRELAUNCH_IDLE_RESET_MS - 1000U) * 1000U);
+    assert(brd_measurement_is_loaded_ready());
+    assert(led_level == LOW);
     shot_10000_then_3000();
     assert(finish_calls == 1U);
     assert(session.pending());
@@ -102,12 +228,14 @@ int main() {
     assert(session.state().curve[0] != 0U);
     assert(finish_calls == 1U);
     assert(brd_measurement_get_display().hold_active);
+    assert(led_level == LOW);
     /* [驗證] HOLD 鎖定時長相對 MAX 畫面完成，不是從 IR 事件起算。 */
     tick(1800000U); // [V1.4.2 修改] 約 2.45 秒，仍在 HOLD
     assert(brd_measurement_get_display().hold_active);
     tick(100000U); // [V1.4.2 修改] 超過 2.5 秒，HOLD 結束
     assert(!brd_measurement_get_display().hold_active);
     assert(!brd_measurement_get_display().loaded); // WAIT LOAD despite physical HIGH
+    assert(led_level == HIGH);
     assert(brd_measurement_get_display().show_max);
     assert(brd_measurement_get_display().value == 10000U);
     rpm(100U); rpm(6000U); rpm(20000U);
@@ -122,6 +250,8 @@ int main() {
     assert(brd_measurement_get_display().show_max);
     load(HIGH, 100U); tick(LOAD_IR_DEBOUNCE_US);
     assert(brd_measurement_get_display().loaded);
+    assert(brd_measurement_is_loaded_ready());
+    assert(led_level == LOW);
     assert(!brd_measurement_get_display().show_max); // only real LOADED clears old MAX
     assert(brd_measurement_get_display().value == 0U);
     shot_10000_then_3000();

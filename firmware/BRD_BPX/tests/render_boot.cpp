@@ -31,8 +31,16 @@ void brd_measurement_max_frame_presented(uint32_t) {}
 int main(int argc,char **argv) {
     if(argc!=2 && argc!=3) { return 1; }
     brd_oled_begin();
-    /* [新增] 全部 0~100% 與充電／非充電狀態逐像素檢查右上角。 */
-    for (unsigned percent=0; percent<=100; ++percent) {
+    assert(strcmp(PROJECT_BOOT_VERSION, "FW VER V1.5.2-1") == 0);
+    const unsigned boot_width = strlen(PROJECT_BOOT_VERSION) * 6U - 1U;
+    assert(boot_width <= OLED_WIDTH);
+    const unsigned hyphen_x = (OLED_WIDTH - boot_width) / 2U + 13U * 6U;
+    for (unsigned x = hyphen_x; x < hyphen_x + 5U; x++) {
+        assert((g_oled_buffer[3U * OLED_WIDTH + x] & (1U << 2U)) != 0U);
+    }
+    assert((g_oled_buffer[2U * OLED_WIDTH + hyphen_x + 8U] & (1U << 7U)) != 0U);
+    /* [新增] 全部 0~100%、超限及充電／非充電狀態逐像素檢查右上角。 */
+    for (unsigned percent=0; percent<=101; ++percent) {
         for (unsigned charging=0; charging<=1; ++charging) {
             brd_display_t display = {};
             display.loaded = true;
@@ -41,9 +49,14 @@ int main(int argc,char **argv) {
             memcpy(actual, g_oled_buffer, sizeof(actual));
             oled_clear_buffer();
             oled_draw_text(0U, 0U, "LOADED READY", 1U);
-            // [FINAL 修改] 固定靠右，不繪製百分比文字。
-            const unsigned icon_x = 128U - 20U;
-            oled_draw_battery_icon(icon_x, 0U, percent);
+            assert(memcmp(actual, g_oled_buffer, strlen("LOADED READY") * 6U - 1U) == 0);
+            const unsigned shown_percent = percent > 100U ? 100U : percent;
+            char label[5];
+            snprintf(label, sizeof(label), "%u%%", shown_percent);
+            const unsigned text_x = 128U - (strlen(label) * 6U - 1U);
+            const unsigned icon_x = text_x - 22U;
+            oled_draw_battery_icon(icon_x, 0U, shown_percent);
+            oled_draw_text(text_x, 1U, label, 1U);
             if (charging) oled_draw_charging_icon(icon_x-7U, 1U);
             for (unsigned y=0; y<9; ++y) {
                 for (unsigned x=0; x<128; ++x) {
@@ -53,7 +66,7 @@ int main(int argc,char **argv) {
             }
         }
     }
-    puts("PASS: battery icon without percentage, 202 combinations.");
+    puts("PASS: battery percentage and icon, 204 combinations.");
     brd_oled_begin();
 
     /* [V1.2 新增] 驗證扇形圓盤 0%、25%、50%、75%、100% 填充像素必須遞增。 */

@@ -26,13 +26,16 @@ static void pulse(uint32_t delta) {
 }
 int main() {
     brd_measurement_begin();
+    assert(!brd_measurement_is_loaded_ready());
     pulse(100U);
     // [修改] 單筆 Falling 週期立即換算；首次低於百分比直接結束。
     for (unsigned i = 0U; i < 5U; ++i) { pulse(5000U); }
+    assert(!brd_measurement_is_loaded_ready());
     pulse(20000U);
     assert(brd_measurement_get_display().show_max);
     for (unsigned i = 0U; i < 3U; ++i) { pulse(20000U); }
     const brd_display_t display = brd_measurement_get_display();
+    assert(display.hold_active);
     if (!display.show_max || display.value != 12000U || launches != 1U) {
         fprintf(stderr, "FAIL: AUTO must finish after confirmed low periods; show_max=%u value=%u launches=%u\n",
                 display.show_max, display.value, launches);

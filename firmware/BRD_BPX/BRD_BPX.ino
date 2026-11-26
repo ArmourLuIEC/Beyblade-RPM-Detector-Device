@@ -46,6 +46,7 @@ void loop(void) {
     brd_battery_update();
     if (!brd_battery_measurement_allowed()) {
         brd_measurement_stop();
+        brd_io_update_status_led(BRD_STATUS_LED_OFF);
         brd_bbp_stop();
         /* [修正] SOC 恢復穩定後先保存 dirty 紀錄，成功才重啟，避免清除被撤回。 */
         if (brd_battery_restart_required() && brd_bbp_prepare_restart()) {
@@ -80,6 +81,15 @@ void loop(void) {
             if (!brd_settings_model().pending()) { brd_ble_identity_update(); }
         }
     }
+    brd_status_led_mode_t led_mode = BRD_STATUS_LED_OFF;
+    if (!brd_ota_is_busy() && brd_settings_ble_display_page() != BRD_DISPLAY_PAGE_IR_TEST) {
+        if (brd_measurement_get_display().hold_active) {
+            led_mode = BRD_STATUS_LED_HOLD;
+        } else if (brd_measurement_is_loaded_ready()) {
+            led_mode = BRD_STATUS_LED_READY;
+        }
+    }
+    brd_io_update_status_led(led_mode);
     brd_oled_update();
     delay(MAIN_LOOP_DELAY_MS);
 }

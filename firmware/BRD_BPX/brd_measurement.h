@@ -51,6 +51,8 @@ bool brd_measurement_modifications_allowed(void);
 /* [新增] Flash 交易暫停/恢復；不清除已完成的 MAX 與凍結曲線。 */
 bool brd_measurement_pause_for_settings(void);
 void brd_measurement_resume_after_settings(bool applied);
+/* 主畫面的 LOAD 已裝載狀態；轉動期間也可能為 true。 */
+bool brd_measurement_is_loaded_ready(void);
 brd_display_t brd_measurement_get_display(void);
 brd_measurement_diagnostics_t brd_measurement_get_diagnostics(void);
 void brd_measurement_max_frame_presented(uint32_t generation);
